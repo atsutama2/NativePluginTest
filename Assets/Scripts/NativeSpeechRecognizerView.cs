@@ -68,15 +68,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
 
     private void CallbackMethod(string message)
     {
-        _text.text = message;
-        var messages = message.Split('\n');
-
-        //ユーザーが話すのを開始した際のコールバック
-        if (messages[0] == "onBeginningOfSpeech")
-        {
-            _text.text = "Start Voice";
-            _text.enabled = true;
-        }
+        string[] messages = message.Split('\n');
 
         //認識した音量変化のコールバック
         if (messages[0] == "onRmsChanged")
@@ -84,30 +76,14 @@ public class NativeSpeechRecognizerView : MonoBehaviour
             _text.text = "認識中...";
         }
 
-        //ユーザーが話すのを終了した際のコールバック
-        if (messages[0] == "onEndOfSpeech")
-        {
-            _text.text = "Stop Voice";
-            _text.enabled = false;
-        }
-
-        //認識した音量変化のコールバック
-        if (messages[0] == "onError")
-        {
-            _text.text = "エラー";
-        }
-
-        //認識結果の準備が完了したコールバック
         if (messages[0] == "onResults")
         {
-            _text.text = "onResults";
-            var msg = "";
-            for (var i = 1; i < messages.Length; i++)
+            string msg = "";
+            for (int i = 1; i < messages.Length; i++)
             {
                 msg += messages[i] + "\n";
             }
 
-            Debug.Log(msg);
             _text.text = msg;
         }
     }
