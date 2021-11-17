@@ -10,17 +10,20 @@ public class NativeSpeechRecognizerView : MonoBehaviour
 
     private IEnumerator Start()
     {
+#if UNITY_ANDROID
         // マイクパーミッションが許可されているか調べる
         if (!Permission.HasUserAuthorizedPermission (Permission.Microphone)) {
             // 権限が無いので、マイクパーミッションのリクエストをする
             yield return RequestUserPermission (Permission.Microphone);
         }
-
+#endif
         foreach (var device in Microphone.devices)
         {
             Debug.Log("Name: " + device);
             _text.text = _text.text+"\n " + device;
         }
+
+        yield break;
     }
 
     private IEnumerator RequestUserPermission(string permission)
@@ -56,7 +59,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
                     "StartRecognizer",
                     context,
                     gameObjectName,
-                    "CallbackMethod"
+                    "Results"
                 );
             }));
 		#elif UNITY_IOS && !UNITY_EDITOR
@@ -66,7 +69,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         #endif
     }
 
-    private void CallbackMethod(string message)
+    private void Results(string message)
     {
         string[] messages = message.Split('\n');
 
@@ -86,16 +89,5 @@ public class NativeSpeechRecognizerView : MonoBehaviour
 
             _text.text = msg;
         }
-    }
-
-    public void ShowStaticFunction(){
-        AndroidJavaClass nativeRecognizer = new AndroidJavaClass ("jp.co.test.nativespeechrecognizer.NativeSpeechRecognizer");
-        AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-        nativeRecognizer.CallStatic("staticFunction", gameObject.name, "onCallBackShowResult");
-    }
-
-    public void onCallBackShowResult(string resultText)
-    {
-        _text.text = resultText;
     }
 }
