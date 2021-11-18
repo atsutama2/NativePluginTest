@@ -124,7 +124,7 @@ GameObject:
   - component: {fileID: 275001903}
   - component: {fileID: 275001902}
   m_Layer: 5
-  m_Name: Text
+  m_Name: ButtonText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -283,7 +283,7 @@ GameObject:
   - component: {fileID: 784156751}
   - component: {fileID: 784156750}
   m_Layer: 5
-  m_Name: Text
+  m_Name: ResultText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -400,7 +400,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8dc52b0b52034f9694f48ded6d66375, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _text: {fileID: 784156750}
+  resultText: {fileID: 784156750}
+  buttonText: {fileID: 275001902}
 --- !u!114 &827070378
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class NativeSpeechRecognizerView : MonoBehaviour
 {
-    [SerializeField] private Text _text = null;
+    [SerializeField] private Text resultText = null;
     bool isRequesting;
 
     private IEnumerator Start()
@@ -20,7 +20,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         foreach (var device in Microphone.devices)
         {
             Debug.Log("Name: " + device);
-            _text.text = _text.text+"\n " + device;
+            resultText.text = resultText.text+"\n " + device;
         }
 
         yield break;
@@ -73,10 +73,10 @@ public class NativeSpeechRecognizerView : MonoBehaviour
     {
         string[] messages = message.Split('\n');
 
-        //認識した音量変化のコールバック
+        // 認識した音量変化のコールバック
         if (messages[0] == "onRmsChanged")
         {
-            _text.text = "認識中...";
+            resultText.text = "認識中...";
         }
 
         if (messages[0] == "onResults")
@@ -87,7 +87,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
                 msg += messages[i] + "\n";
             }
 
-            _text.text = msg;
+            resultText.text = msg;
         }
     }
 }
