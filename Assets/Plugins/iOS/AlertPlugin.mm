@@ -1,4 +1,4 @@
-#import "unityswift-Swift.h"
+#import "Unity-iPhone-Swift.h"
 
 extern "C"
 {

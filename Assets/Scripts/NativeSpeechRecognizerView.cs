@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Android;
 using UnityEngine.UI;
@@ -6,23 +7,53 @@ using UnityEngine.UI;
 public class NativeSpeechRecognizerView : MonoBehaviour
 {
     [SerializeField] private Text resultText = null;
+    [SerializeField] private Text buttonText = null;
+    private string _gameObjectName;
     bool isRequesting;
+
+#if UNITY_IOS && !UNITY_EDITOR
+        [DllImport("__Internal")]
+        private static extern void _prepareRecording(string _gameObjectName);
+        [DllImport("__Internal")]
+        private static extern void _recordButtonTapped();
+        private static void PrepareRecording(string _gameObjectName)
+        {
+            _prepareRecording(_gameObjectName);
+        }
+
+        private static void RecordButtonTapped()
+        {
+            _recordButtonTapped();
+        }
+#endif
 
     private IEnumerator Start()
     {
-#if UNITY_ANDROID
-        // マイクパーミッションが許可されているか調べる
-        if (!Permission.HasUserAuthorizedPermission (Permission.Microphone)) {
-            // 権限が無いので、マイクパーミッションのリクエストをする
-            yield return RequestUserPermission (Permission.Microphone);
-        }
-#endif
+        _gameObjectName = this.gameObject.name;
         foreach (var device in Microphone.devices)
         {
-            Debug.Log("Name: " + device);
             resultText.text = resultText.text+"\n " + device;
         }
+#if !UNITY_EDITOR
+    #if UNITY_IOS
+            yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
+            if (Application.HasUserAuthorization(UserAuthorization.Microphone)) {
+                PrepareRecording(_gameObjectName);
+            } else {
+                Debug.Log("[iOS] Microphone not found");
+            }
+    #endif
 
+    #if UNITY_ANDROID
+            // マイクパーミッションが許可されているか調べる
+            if (!Permission.HasUserAuthorizedPermission (Permission.Microphone)) {
+                // 権限が無いので、マイクパーミッションのリクエストをする
+                yield return RequestUserPermission (Permission.Microphone);
+            } else {
+                Debug.Log("[Android] Microphone not found");
+            }
+    #endif
+#endif
         yield break;
     }
 
@@ -48,37 +79,58 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         yield break;
     }
 
-    public void StartRecognizer() {
-        #if UNITY_ANDROID && !UNITY_EDITOR
-            AndroidJavaClass nativeRecognizer = new AndroidJavaClass ("jp.co.test.nativespeechrecognizer.NativeSpeechRecognizer");
-            AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-            AndroidJavaObject context  = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-            string gameObjectName = gameObject.name;
-            context.Call("runOnUiThread", new AndroidJavaRunnable(() => {
-                nativeRecognizer.CallStatic(
-                    "StartRecognizer",
-                    context,
-                    gameObjectName,
-                    "Results"
-                );
-            }));
-		#elif UNITY_IOS && !UNITY_EDITOR
+    #if UNITY_ANDROID && UNITY_IOS && !UNITY_EDITOR
+    private IEnumerator OnApplicationFocus(bool hasFocus)
+    {
+        // iOSプラットフォームでは1フレーム待つ処理がないと意図通りに動かない。
+        yield return null;
 
-        #elif UNITY_EDITOR
-            UnityEngine.Debug.Log("On Click!");
-        #endif
+        if (isRequesting && hasFocus)
+        {
+            isRequesting = false;
+        }
+    }
+    #endif
+
+
+    /// <summary>
+    /// 音声認識開始
+    /// </summary>
+    public void StartRecognizer() {
+
+        // 認識テキスト初期化
+        resultText.text = "-";
+
+#if !UNITY_EDITOR
+    #if UNITY_ANDROID
+        AndroidJavaClass nativeRecognizer = new AndroidJavaClass ("jp.co.test.nativespeechrecognizer.NativeSpeechRecognizer");
+        AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+        AndroidJavaObject context  = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+        string gameObjectName = gameObject.name;
+        context.Call("runOnUiThread", new AndroidJavaRunnable(() => {
+            nativeRecognizer.CallStatic(
+                "StartRecognizer",
+                context,
+                gameObjectName,
+                "Results",
+                "ButtonResults"
+            );
+        }));
+    #elif UNITY_IOS
+        RecordButtonTapped();
+    #endif
+#endif
+
+#if UNITY_EDITOR
+        UnityEngine.Debug.Log("On Click!");
+#endif
     }
 
     private void Results(string message)
     {
+#if !UNITY_EDITOR
+    #if UNITY_ANDROID
         string[] messages = message.Split('\n');
-
-        // 認識した音量変化のコールバック
-        if (messages[0] == "onRmsChanged")
-        {
-            resultText.text = "認識中...";
-        }
-
         if (messages[0] == "onResults")
         {
             string msg = "";
@@ -88,6 +140,58 @@ public class NativeSpeechRecognizerView : MonoBehaviour
             }
 
             resultText.text = msg;
+        } else {
+            string msg = "-";
         }
+    #elif UNITY_IOS
+        resultText.text = message;
+    #endif
+#endif
+    }
+
+	public void ButtonResults(string message)
+    {
+		UnityEngine.Debug.Log("<color=orange> " + message + " </color>", this);
+
+#if !UNITY_EDITOR
+    #if UNITY_ANDROID
+        buttonText.text = message;
+
+        string[] messages = message.Split('\n');
+        if (message == "onReadyForSpeech")
+        {
+            this.GetComponent<Button>().interactable = false;
+            buttonText.text = "認識を開始します";
+        }
+        if (message == "OnBeginningOfSpheech")
+        {
+            buttonText.text = "認識中...";
+        }
+        if (message == "onEndOfSpeech")
+        {
+            StartCoroutine(SetStartText());
+        }
+        if (message == "onError")
+        {
+            buttonText.text = message;
+            this.GetComponent<Button>().interactable = true;
+        }
+#elif UNITY_IOS
+		string[] data = message.Split(':');
+		if (data.Length != 2)
+			return;
+
+        buttonText.text = data[1];
+    #endif
+#endif
+	}
+
+    private IEnumerator SetStartText()
+    {
+        buttonText.text = "認識を停止しました";
+        yield return new WaitForSeconds(1.5f);
+        buttonText.text = "認識を開始します";
+
+        this.GetComponent<Button>().interactable = true;
     }
 }
