@@ -12,6 +12,6 @@ Native Plugin test for Unity
 - Swift4.0
 
 ## Qiita
-- [[Unity] AndroidのSpeechRecognizer(音声テキスト認識)を実装する](https://qiita.com/atsutama/items/fd8dca4a1e621f4c855b)
+- [[Unity] Android・iOSでネイティブの音声テキスト認識を実装する](https://qiita.com/atsutama/items/fd8dca4a1e621f4c855b)
 - [[Unity] Android NativePluginの実装の仕方](https://qiita.com/atsutama/items/28744b1a29e79184c3fc)
 - [[Unity] iOS NativePluginの実装の仕方](https://qiita.com/atsutama/items/3c8fe716c2667be6025f)
