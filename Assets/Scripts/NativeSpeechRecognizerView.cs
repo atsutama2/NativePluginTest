@@ -34,25 +34,24 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         {
             resultText.text = resultText.text+"\n " + device;
         }
-#if !UNITY_EDITOR
-    #if UNITY_IOS
-            yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
-            if (Application.HasUserAuthorization(UserAuthorization.Microphone)) {
-                PrepareRecording(_gameObjectName);
-            } else {
-                Debug.Log("[iOS] Microphone not found");
-            }
-    #endif
 
-    #if UNITY_ANDROID
-            // マイクパーミッションが許可されているか調べる
-            if (!Permission.HasUserAuthorizedPermission (Permission.Microphone)) {
-                // 権限が無いので、マイクパーミッションのリクエストをする
-                yield return RequestUserPermission (Permission.Microphone);
-            } else {
-                Debug.Log("[Android] Microphone not found");
-            }
-    #endif
+#if UNITY_IOS && !UNITY_EDITOR
+        yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
+        if (Application.HasUserAuthorization(UserAuthorization.Microphone)) {
+            PrepareRecording(_gameObjectName);
+        } else {
+            Debug.Log("[iOS] Microphone not found");
+        }
+#endif
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        // マイクパーミッションが許可されているか調べる
+        if (!Permission.HasUserAuthorizedPermission (Permission.Microphone)) {
+            // 権限が無いので、マイクパーミッションのリクエストをする
+            yield return RequestUserPermission (Permission.Microphone);
+        } else {
+            Debug.Log("[Android] Microphone not found");
+        }
 #endif
         yield break;
     }
@@ -79,7 +78,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         yield break;
     }
 
-    #if UNITY_ANDROID && UNITY_IOS && !UNITY_EDITOR
+#if UNITY_ANDROID && UNITY_IOS && !UNITY_EDITOR
     private IEnumerator OnApplicationFocus(bool hasFocus)
     {
         // iOSプラットフォームでは1フレーム待つ処理がないと意図通りに動かない。
@@ -90,19 +89,18 @@ public class NativeSpeechRecognizerView : MonoBehaviour
             isRequesting = false;
         }
     }
-    #endif
+#endif
 
 
     /// <summary>
     /// 音声認識開始
     /// </summary>
-    public void StartRecognizer() {
-
+    public void StartRecognizer()
+    {
         // 認識テキスト初期化
         resultText.text = "-";
 
-#if !UNITY_EDITOR
-    #if UNITY_ANDROID
+#if UNITY_ANDROID && !UNITY_EDITOR
         AndroidJavaClass nativeRecognizer = new AndroidJavaClass ("jp.co.test.nativespeechrecognizer.NativeSpeechRecognizer");
         AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
         AndroidJavaObject context  = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
@@ -116,9 +114,8 @@ public class NativeSpeechRecognizerView : MonoBehaviour
                 "ButtonResults"
             );
         }));
-    #elif UNITY_IOS
+#elif UNITY_IOS && !UNITY_EDITOR
         RecordButtonTapped();
-    #endif
 #endif
 
 #if UNITY_EDITOR
@@ -128,8 +125,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
 
     private void Results(string message)
     {
-#if !UNITY_EDITOR
-    #if UNITY_ANDROID
+#if UNITY_ANDROID && !UNITY_EDITOR
         string[] messages = message.Split('\n');
         if (messages[0] == "onResults")
         {
@@ -143,9 +139,8 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         } else {
             string msg = "-";
         }
-    #elif UNITY_IOS
+#elif UNITY_IOS && !UNITY_EDITOR
         resultText.text = message;
-    #endif
 #endif
     }
 
@@ -153,8 +148,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
     {
 		UnityEngine.Debug.Log("<color=orange> " + message + " </color>", this);
 
-#if !UNITY_EDITOR
-    #if UNITY_ANDROID
+#if UNITY_ANDROID && !UNITY_EDITOR
         buttonText.text = message;
 
         string[] messages = message.Split('\n');
@@ -169,24 +163,23 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         }
         if (message == "onEndOfSpeech")
         {
-            StartCoroutine(SetStartText());
+            StartCoroutine(SetStartTextCoroutine());
         }
         if (message == "onError")
         {
             buttonText.text = message;
             this.GetComponent<Button>().interactable = true;
         }
-#elif UNITY_IOS
+#elif UNITY_IOS && !UNITY_EDITOR
 		string[] data = message.Split(':');
 		if (data.Length != 2)
 			return;
 
         buttonText.text = data[1];
-    #endif
 #endif
 	}
 
-    private IEnumerator SetStartText()
+    private IEnumerator SetStartTextCoroutine()
     {
         buttonText.text = "認識を停止しました";
         yield return new WaitForSeconds(1.5f);
