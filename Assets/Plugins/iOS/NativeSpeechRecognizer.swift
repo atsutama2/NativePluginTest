@@ -11,16 +11,14 @@ public class NativeSpeechRecognizer : NSObject {
     private var audioEngine: AVAudioEngine?
 
     private var gameObjectName: String?
+    var queue: AudioQueueRef!
+    var timer: Timer!
+    var volume = 0
 
     override init() {
         super.init()
         self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ja-JP"))!
         self.audioEngine = AVAudioEngine()
-
-        // オンライン認識
-        if #available(iOS 13, *) {
-            recognitionRequest?.requiresOnDeviceRecognition = false
-        }
     }
 
     @objc func prepareRecording(_ gameObjectName: String) {
@@ -68,12 +66,22 @@ public class NativeSpeechRecognizer : NSObject {
 
         self.recognitionRequest?.shouldReportPartialResults = true
 
+        // オンライン認識
+        if #available(iOS 13, *) {
+            recognitionRequest.requiresOnDeviceRecognition = true
+        }
+
         self.recognitionTask = self.speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
             var isFinal = false
 
             if let result = result {
-                self.updateField(result.bestTranscription.formattedString)
+                let resultString = result.bestTranscription.formattedString
+                print("Now: " + resultString)
+
+                self.updateField(resultString)
+
                 isFinal = result.isFinal
+                print("isFinal" + String(isFinal))
             }
 
             if error != nil || isFinal {
@@ -92,6 +100,9 @@ public class NativeSpeechRecognizer : NSObject {
             self.recognitionRequest?.append(buffer)
         }
 
+        //音量測定
+        self.SettingVolume()
+
         self.audioEngine?.prepare()
 
         try self.audioEngine?.start()
@@ -99,7 +110,7 @@ public class NativeSpeechRecognizer : NSObject {
         self.updateField("")
     }
 
-    @nonobjc internal func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
+    public func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
         if available {
             self.updateButton(true, title: "録音を開始します")
         } else {
@@ -113,9 +124,14 @@ public class NativeSpeechRecognizer : NSObject {
             self.audioEngine?.stop()
             self.recognitionRequest?.endAudio()
             self.updateButton(false, title: "停止...")
+            self.StopUpdatingVolume()
         } else {
-            try! self.startRecording()
-            self.updateButton(true, title: "録音を停止します")
+            do {
+                try startRecording()
+                self.updateButton(true, title: "録音を停止します")
+            } catch {
+                self.updateButton(true, title: "録音ができません")
+            }
         }
     }
 
@@ -126,4 +142,101 @@ public class NativeSpeechRecognizer : NSObject {
     fileprivate func updateField(_ text: String) {
         UnitySendMessage(self.gameObjectName, "Results", text)
     }
+
+    fileprivate func updateVolume(_ text: String) {
+        UnitySendMessage(self.gameObjectName, "OnCallbackVolume", text)
+    }
+
+    //音量測定セッティング
+    func SettingVolume(){
+        //データフォーマット設定
+        var dataFormat = AudioStreamBasicDescription(
+            mSampleRate: 44100.0,
+            mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: AudioFormatFlags(kLinearPCMFormatFlagIsBigEndian | kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked),
+            mBytesPerPacket: 2,
+            mFramesPerPacket: 1,
+            mBytesPerFrame: 2,
+            mChannelsPerFrame: 1,
+            mBitsPerChannel: 16,
+            mReserved: 0)
+
+        //インプットレベルの設定
+        var audioQueue: AudioQueueRef? = nil
+        var error = noErr
+        error = AudioQueueNewInput(
+            &dataFormat,
+            AudioQueueInputCallback,
+            .none,
+            .none,
+            .none,
+            0,
+            &audioQueue)
+
+        if error == noErr {
+            self.queue = audioQueue
+        }
+
+        AudioQueueStart(self.queue, nil)
+
+        //音量を取得の設定
+        var enabledLevelMeter: UInt32 = 1
+        AudioQueueSetProperty(self.queue,
+                              kAudioQueueProperty_EnableLevelMetering,
+                              &enabledLevelMeter,
+                              UInt32(MemoryLayout<UInt32>.size))
+
+        self.timer = Timer.scheduledTimer(timeInterval: 1.0,
+                                            target: self,
+                                            selector: #selector(DetectVolume(_:)),
+                                            userInfo: nil,
+                                            repeats: true)
+        self.timer.fire()
+
+    }
+
+    //音量測定
+    @objc func DetectVolume(_ timer: Timer) {
+        //音量取得
+        var levelMeter = AudioQueueLevelMeterState()
+        var propertySize = UInt32(MemoryLayout<AudioQueueLevelMeterState>.size)
+
+        AudioQueueGetProperty(
+            self.queue,
+            kAudioQueueProperty_CurrentLevelMeterDB,
+            &levelMeter,
+            &propertySize)
+
+        self.volume = (Int)((levelMeter.mPeakPower + 144.0) * (100.0/144.0))
+
+        print("volume: " + String(self.volume))
+        self.updateVolume(String(self.volume))
+
+//        let mPeakPower = levelMeter.mPeakPower
+//        let mAveragePower = levelMeter.mAveragePower
+//        print("mPeakPower: " + String(mPeakPower))
+//        print("mAveragePower: " + String(mAveragePower))
+
+    }
+
+    // 測定停止
+    private func StopUpdatingVolume()
+    {
+        self.timer.invalidate()
+        self.timer = nil
+        AudioQueueFlush(self.queue)
+        AudioQueueStop(self.queue, false)
+        AudioQueueDispose(self.queue, true)
+    }
+}
+
+private func AudioQueueInputCallback(
+    _ inUserData: UnsafeMutableRawPointer?,
+    inAQ: AudioQueueRef,
+    inBuffer: AudioQueueBufferRef,
+    inStartTime: UnsafePointer<AudioTimeStamp>,
+    inNumberPacketDescriptions: UInt32,
+    inPacketDescs: UnsafePointer<AudioStreamPacketDescription>?)
+{
+    // Do nothing, because not recoding.
 }

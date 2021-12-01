@@ -179,6 +179,7 @@ public class NativeSpeechRecognizerView : MonoBehaviour
 #endif
 	}
 
+#if UNITY_ANDROID && !UNITY_EDITOR
     private IEnumerator SetStartTextCoroutine()
     {
         buttonText.text = "認識を停止しました";
@@ -186,5 +187,11 @@ public class NativeSpeechRecognizerView : MonoBehaviour
         buttonText.text = "認識を開始します";
 
         this.GetComponent<Button>().interactable = true;
+    }
+#endif
+
+    public void OnCallbackVolume(string str)
+    {
+        resultText.text = str;
     }
 }
