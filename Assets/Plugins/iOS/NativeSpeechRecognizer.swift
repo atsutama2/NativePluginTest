@@ -101,7 +101,7 @@ public class NativeSpeechRecognizer : NSObject {
         }
 
         //音量測定
-        self.SettingVolume()
+        // self.SettingVolume()
 
         self.audioEngine?.prepare()
 
@@ -124,7 +124,7 @@ public class NativeSpeechRecognizer : NSObject {
             self.audioEngine?.stop()
             self.recognitionRequest?.endAudio()
             self.updateButton(false, title: "停止...")
-            self.StopUpdatingVolume()
+            // self.StopUpdatingVolume()
         } else {
             do {
                 try startRecording()
@@ -143,100 +143,100 @@ public class NativeSpeechRecognizer : NSObject {
         UnitySendMessage(self.gameObjectName, "Results", text)
     }
 
-    fileprivate func updateVolume(_ text: String) {
-        UnitySendMessage(self.gameObjectName, "OnCallbackVolume", text)
-    }
+    // fileprivate func updateVolume(_ text: String) {
+    //     UnitySendMessage(self.gameObjectName, "OnCallbackVolume", text)
+    // }
 
     //音量測定セッティング
-    func SettingVolume(){
-        //データフォーマット設定
-        var dataFormat = AudioStreamBasicDescription(
-            mSampleRate: 44100.0,
-            mFormatID: kAudioFormatLinearPCM,
-            mFormatFlags: AudioFormatFlags(kLinearPCMFormatFlagIsBigEndian | kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked),
-            mBytesPerPacket: 2,
-            mFramesPerPacket: 1,
-            mBytesPerFrame: 2,
-            mChannelsPerFrame: 1,
-            mBitsPerChannel: 16,
-            mReserved: 0)
+    // func SettingVolume(){
+    //     //データフォーマット設定
+    //     var dataFormat = AudioStreamBasicDescription(
+    //         mSampleRate: 44100.0,
+    //         mFormatID: kAudioFormatLinearPCM,
+    //         mFormatFlags: AudioFormatFlags(kLinearPCMFormatFlagIsBigEndian | kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked),
+    //         mBytesPerPacket: 2,
+    //         mFramesPerPacket: 1,
+    //         mBytesPerFrame: 2,
+    //         mChannelsPerFrame: 1,
+    //         mBitsPerChannel: 16,
+    //         mReserved: 0)
 
-        //インプットレベルの設定
-        var audioQueue: AudioQueueRef? = nil
-        var error = noErr
-        error = AudioQueueNewInput(
-            &dataFormat,
-            AudioQueueInputCallback,
-            .none,
-            .none,
-            .none,
-            0,
-            &audioQueue)
+    //     //インプットレベルの設定
+    //     var audioQueue: AudioQueueRef? = nil
+    //     var error = noErr
+    //     error = AudioQueueNewInput(
+    //         &dataFormat,
+    //         AudioQueueInputCallback,
+    //         .none,
+    //         .none,
+    //         .none,
+    //         0,
+    //         &audioQueue)
 
-        if error == noErr {
-            self.queue = audioQueue
-        }
+    //     if error == noErr {
+    //         self.queue = audioQueue
+    //     }
 
-        AudioQueueStart(self.queue, nil)
+    //     AudioQueueStart(self.queue, nil)
 
-        //音量を取得の設定
-        var enabledLevelMeter: UInt32 = 1
-        AudioQueueSetProperty(self.queue,
-                              kAudioQueueProperty_EnableLevelMetering,
-                              &enabledLevelMeter,
-                              UInt32(MemoryLayout<UInt32>.size))
+    //     //音量を取得の設定
+    //     var enabledLevelMeter: UInt32 = 1
+    //     AudioQueueSetProperty(self.queue,
+    //                           kAudioQueueProperty_EnableLevelMetering,
+    //                           &enabledLevelMeter,
+    //                           UInt32(MemoryLayout<UInt32>.size))
 
-        self.timer = Timer.scheduledTimer(timeInterval: 1.0,
-                                            target: self,
-                                            selector: #selector(DetectVolume(_:)),
-                                            userInfo: nil,
-                                            repeats: true)
-        self.timer.fire()
+    //     self.timer = Timer.scheduledTimer(timeInterval: 1.0,
+    //                                         target: self,
+    //                                         selector: #selector(DetectVolume(_:)),
+    //                                         userInfo: nil,
+    //                                         repeats: true)
+    //     self.timer.fire()
 
-    }
+    // }
 
     //音量測定
-    @objc func DetectVolume(_ timer: Timer) {
-        //音量取得
-        var levelMeter = AudioQueueLevelMeterState()
-        var propertySize = UInt32(MemoryLayout<AudioQueueLevelMeterState>.size)
+//     @objc func DetectVolume(_ timer: Timer) {
+//         //音量取得
+//         var levelMeter = AudioQueueLevelMeterState()
+//         var propertySize = UInt32(MemoryLayout<AudioQueueLevelMeterState>.size)
 
-        AudioQueueGetProperty(
-            self.queue,
-            kAudioQueueProperty_CurrentLevelMeterDB,
-            &levelMeter,
-            &propertySize)
+//         AudioQueueGetProperty(
+//             self.queue,
+//             kAudioQueueProperty_CurrentLevelMeterDB,
+//             &levelMeter,
+//             &propertySize)
 
-        self.volume = (Int)((levelMeter.mPeakPower + 144.0) * (100.0/144.0))
+//         self.volume = (Int)((levelMeter.mPeakPower + 144.0) * (100.0/144.0))
 
-        print("volume: " + String(self.volume))
-        self.updateVolume(String(self.volume))
+//         print("volume: " + String(self.volume))
+//         self.updateVolume(String(self.volume))
 
-//        let mPeakPower = levelMeter.mPeakPower
-//        let mAveragePower = levelMeter.mAveragePower
-//        print("mPeakPower: " + String(mPeakPower))
-//        print("mAveragePower: " + String(mAveragePower))
+// //        let mPeakPower = levelMeter.mPeakPower
+// //        let mAveragePower = levelMeter.mAveragePower
+// //        print("mPeakPower: " + String(mPeakPower))
+// //        print("mAveragePower: " + String(mAveragePower))
 
-    }
+//     }
 
     // 測定停止
-    private func StopUpdatingVolume()
-    {
-        self.timer.invalidate()
-        self.timer = nil
-        AudioQueueFlush(self.queue)
-        AudioQueueStop(self.queue, false)
-        AudioQueueDispose(self.queue, true)
-    }
+    // private func StopUpdatingVolume()
+    // {
+    //     self.timer.invalidate()
+    //     self.timer = nil
+    //     AudioQueueFlush(self.queue)
+    //     AudioQueueStop(self.queue, false)
+    //     AudioQueueDispose(self.queue, true)
+    // }
 }
 
-private func AudioQueueInputCallback(
-    _ inUserData: UnsafeMutableRawPointer?,
-    inAQ: AudioQueueRef,
-    inBuffer: AudioQueueBufferRef,
-    inStartTime: UnsafePointer<AudioTimeStamp>,
-    inNumberPacketDescriptions: UInt32,
-    inPacketDescs: UnsafePointer<AudioStreamPacketDescription>?)
-{
-    // Do nothing, because not recoding.
-}
+// private func AudioQueueInputCallback(
+//     _ inUserData: UnsafeMutableRawPointer?,
+//     inAQ: AudioQueueRef,
+//     inBuffer: AudioQueueBufferRef,
+//     inStartTime: UnsafePointer<AudioTimeStamp>,
+//     inNumberPacketDescriptions: UInt32,
+//     inPacketDescs: UnsafePointer<AudioStreamPacketDescription>?)
+// {
+//     // Do nothing, because not recoding.
+// }
