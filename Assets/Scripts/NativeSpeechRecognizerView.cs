@@ -146,40 +146,46 @@ public class NativeSpeechRecognizerView : MonoBehaviour
 
 	public void ButtonResults(string message)
     {
-		UnityEngine.Debug.Log("<color=orange> " + message + " </color>", this);
-
 #if UNITY_ANDROID && !UNITY_EDITOR
-        buttonText.text = message;
-
         string[] messages = message.Split('\n');
-        if (message == "onReadyForSpeech")
-        {
+        if (message == "onReadyForSpeech") {
             this.GetComponent<Button>().interactable = false;
             buttonText.text = "認識を開始します";
-        }
-        if (message == "OnBeginningOfSpheech")
-        {
+
+        } else if (message == "onBeginningOfSpeech") {
             buttonText.text = "認識中...";
-        }
-        if (message == "onEndOfSpeech")
-        {
+
+        } else if (message == "onEndOfSpeech") {
+            buttonText.text = "終了...";
             StartCoroutine(SetStartTextCoroutine());
-        }
-        if (message == "onError")
-        {
+        } else {
             buttonText.text = message;
             this.GetComponent<Button>().interactable = true;
+
         }
 #elif UNITY_IOS && !UNITY_EDITOR
-		string[] data = message.Split(':');
-		if (data.Length != 2)
-			return;
+		string[] messages = message.Split(':');
+		if (messages.Length != 2) {
+            return;
 
-        buttonText.text = data[1];
+        } else if (messages[1] == "onReadyForSpeech") {
+            buttonText.text = "認識を開始します";
+
+        } else if (messages[1] == "onBeginningOfSpeech") {
+            buttonText.text = "認識中...";
+
+        } else if (messages[1] == "onEndOfSpeech") {
+            buttonText.text = "終了...";
+            StartCoroutine(SetStartTextCoroutine());
+
+        } else {
+            buttonText.text = message;
+            this.GetComponent<Button>().interactable = true;
+
+        }
 #endif
 	}
 
-#if UNITY_ANDROID && !UNITY_EDITOR
     private IEnumerator SetStartTextCoroutine()
     {
         buttonText.text = "認識を停止しました";
@@ -188,10 +194,5 @@ public class NativeSpeechRecognizerView : MonoBehaviour
 
         this.GetComponent<Button>().interactable = true;
     }
-#endif
 
-    public void OnCallbackVolume(string str)
-    {
-        resultText.text = str;
-    }
 }

@@ -1,18 +1,17 @@
-#import <Foundation/Foundation.h>
-#import <Speech/Speech.h>
-#import "Unity-iPhone-Swift.h"
+#import <UnityFramework/UnityFramework-Swift.h>
 
 extern "C"
 {
-    NativeSpeechRecognizer *instance = [NativeSpeechRecognizer sharedInstance];
+    NativeSpeechRecognizer *sharedInstance = [[NativeSpeechRecognizer alloc] init];
 
     void _prepareRecording(const char* gameObjectName)
     {
-        [instance prepareRecording:[NSString stringWithUTF8String:gameObjectName]];
+
+        [sharedInstance prepareRecording:[NSString stringWithUTF8String:gameObjectName]];
     }
 
     void _recordButtonTapped()
     {
-        [instance recordButtonTapped];
+        [sharedInstance recordButtonTapped];
     }
 }

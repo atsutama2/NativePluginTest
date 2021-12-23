@@ -1,242 +1,141 @@
 import Foundation
 import Speech
 
-public class NativeSpeechRecognizer : NSObject {
+@objc public class NativeSpeechRecognizer : NSObject {
 
     @objc static let sharedInstance = NativeSpeechRecognizer()
 
-    private var speechRecognizer: SFSpeechRecognizer?
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ja-JP"))!
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
-    private var audioEngine: AVAudioEngine?
+    private let audioEngine = AVAudioEngine()
 
     private var gameObjectName: String?
-    var queue: AudioQueueRef!
-    var timer: Timer!
-    var volume = 0
 
-    override init() {
-        super.init()
-        self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ja-JP"))!
-        self.audioEngine = AVAudioEngine()
-    }
-
-    @objc func prepareRecording(_ gameObjectName: String) {
+    @objc public func prepareRecording(_ gameObjectName: String) {
 
         self.gameObjectName = gameObjectName
 
+        // Asynchronously make the authorization request.
         SFSpeechRecognizer.requestAuthorization { authStatus in
+
+            // Divert to the app's main thread so that the UI
+            // can be updated.
             OperationQueue.main.addOperation {
                 switch authStatus {
                 case .authorized:
-                    self.updateButton(true, title: "録音を開始します")
-
+                    self.updateState(false, title: "authorized")
                 case .denied:
-                    self.updateButton(false, title: "ユーザーが音声認識へのアクセスを拒否されました")
-
+                    self.updateState(false, title: "Error denied")
                 case .restricted:
-                    self.updateButton(false, title: "この装置では音声認識が制限されています")
-
+                    self.updateState(false, title: "Error restricted")
                 case .notDetermined:
-                    self.updateButton(false, title: "スピーチ認識はまだ認証されていません")
+                    self.updateState(false, title: "Error notDetermined")
+                default:
+                    self.updateState(false, title: "Other Error")
                 }
             }
         }
     }
 
-    fileprivate func startRecording() throws {
-        if let recognitionTask = self.recognitionTask {
-            recognitionTask.cancel()
-            self.recognitionTask = nil
-        }
+    private func startRecording() throws {
 
+        // Cancel the previous task if it's running.
+        recognitionTask?.cancel()
+        self.recognitionTask = nil
+
+        // Configure the audio session for the app.
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(AVAudioSessionCategoryRecord)
-        try audioSession.setMode(AVAudioSessionModeMeasurement)
-        try audioSession.setActive(true, with: .notifyOthersOnDeactivation)
+        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        let inputNode = audioEngine.inputNode
 
-        self.recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-
-        guard let inputNode = self.audioEngine?.inputNode else {
-            fatalError("オーディオエンジンには入力ノードがありません")
+        // Create and configure the speech recognition request.
+        recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else {
+            fatalError("Unable to created a SFSpeechAudioBufferRecognitionRequest object")
         }
-        guard let recognitionRequest = self.recognitionRequest else {
-            fatalError("SFSpeechAudioBufferRecognitionRequestオブジェクトを作成できません")
-        }
+        recognitionRequest.shouldReportPartialResults = true
 
-        self.recognitionRequest?.shouldReportPartialResults = true
-
-        // オンライン認識
+        // Keep speech recognition data on device
         if #available(iOS 13, *) {
-            recognitionRequest.requiresOnDeviceRecognition = true
+            recognitionRequest.requiresOnDeviceRecognition = false
         }
 
-        self.recognitionTask = self.speechRecognizer?.recognitionTask(with: recognitionRequest) { result, error in
+        // Create a recognition task for the speech recognition session.
+        // Keep a reference to the task so that it can be canceled.
+        recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
             var isFinal = false
 
             if let result = result {
-                let resultString = result.bestTranscription.formattedString
-                print("Now: " + resultString)
-
-                self.updateField(resultString)
-
+                // Update the text view with the results.
+                self.updateField(result.bestTranscription.formattedString)
                 isFinal = result.isFinal
-                print("isFinal" + String(isFinal))
+                print("Text \(result.bestTranscription.formattedString)")
             }
 
             if error != nil || isFinal {
-                self.audioEngine?.stop()
+                // Stop recognizing speech if there is a problem.
+                self.audioEngine.stop()
                 inputNode.removeTap(onBus: 0)
 
                 self.recognitionRequest = nil
                 self.recognitionTask = nil
 
-                self.updateButton(true, title: "録音を開始します")
+                self.updateState(true, title: "onReadyForSpeech")
             }
         }
 
+        // Configure the microphone input.
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
             self.recognitionRequest?.append(buffer)
         }
 
-        //音量測定
-        // self.SettingVolume()
-
-        self.audioEngine?.prepare()
-
-        try self.audioEngine?.start()
+        self.audioEngine.prepare()
+        try self.audioEngine.start()
 
         self.updateField("")
     }
 
-    public func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
+    // MARK: SFSpeechRecognizerDelegate
+
+    @objc public func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
         if available {
-            self.updateButton(true, title: "録音を開始します")
+            self.updateState(true, title: "onReadyForSpeech")
         } else {
-            self.updateButton(false, title: "認識がありません")
+            self.updateState(false, title: "Recognition not available")
         }
     }
 
     // MARK: Interface Builder actions
-    @objc func recordButtonTapped() {
-        if (self.audioEngine?.isRunning)! {
-            self.audioEngine?.stop()
-            self.recognitionRequest?.endAudio()
-            self.updateButton(false, title: "停止...")
-            // self.StopUpdatingVolume()
+
+    @objc public func recordButtonTapped() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            recognitionRequest?.endAudio()
+            self.updateState(false, title: "onEndOfSpeech")
         } else {
             do {
                 try startRecording()
-                self.updateButton(true, title: "録音を停止します")
+                self.updateState(true, title: "onBeginningOfSpeech")
             } catch {
-                self.updateButton(true, title: "録音ができません")
+                self.updateState(true, title: "Can not record")
             }
         }
     }
 
-    fileprivate func updateButton(_ isEnabled: Bool, title: String) {
-        UnitySendMessage(self.gameObjectName, "ButtonResults", "\(isEnabled):\(title)")
+    private func updateState(_ isEnabled: Bool, title: String) {
+        UnityFramework.getInstance().sendMessageToGO(
+            withName: self.gameObjectName!,
+            functionName: "OnCallbackStateResults",
+            message: "\(isEnabled):\(title)")
     }
 
-    fileprivate func updateField(_ text: String) {
-        UnitySendMessage(self.gameObjectName, "Results", text)
+    private func updateField(_ text: String) {
+        UnityFramework.getInstance().sendMessageToGO(
+            withName: self.gameObjectName!,
+            functionName: "OnCallbackResults",
+            message: text)
     }
-
-    // fileprivate func updateVolume(_ text: String) {
-    //     UnitySendMessage(self.gameObjectName, "OnCallbackVolume", text)
-    // }
-
-    //音量測定セッティング
-    // func SettingVolume(){
-    //     //データフォーマット設定
-    //     var dataFormat = AudioStreamBasicDescription(
-    //         mSampleRate: 44100.0,
-    //         mFormatID: kAudioFormatLinearPCM,
-    //         mFormatFlags: AudioFormatFlags(kLinearPCMFormatFlagIsBigEndian | kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked),
-    //         mBytesPerPacket: 2,
-    //         mFramesPerPacket: 1,
-    //         mBytesPerFrame: 2,
-    //         mChannelsPerFrame: 1,
-    //         mBitsPerChannel: 16,
-    //         mReserved: 0)
-
-    //     //インプットレベルの設定
-    //     var audioQueue: AudioQueueRef? = nil
-    //     var error = noErr
-    //     error = AudioQueueNewInput(
-    //         &dataFormat,
-    //         AudioQueueInputCallback,
-    //         .none,
-    //         .none,
-    //         .none,
-    //         0,
-    //         &audioQueue)
-
-    //     if error == noErr {
-    //         self.queue = audioQueue
-    //     }
-
-    //     AudioQueueStart(self.queue, nil)
-
-    //     //音量を取得の設定
-    //     var enabledLevelMeter: UInt32 = 1
-    //     AudioQueueSetProperty(self.queue,
-    //                           kAudioQueueProperty_EnableLevelMetering,
-    //                           &enabledLevelMeter,
-    //                           UInt32(MemoryLayout<UInt32>.size))
-
-    //     self.timer = Timer.scheduledTimer(timeInterval: 1.0,
-    //                                         target: self,
-    //                                         selector: #selector(DetectVolume(_:)),
-    //                                         userInfo: nil,
-    //                                         repeats: true)
-    //     self.timer.fire()
-
-    // }
-
-    //音量測定
-//     @objc func DetectVolume(_ timer: Timer) {
-//         //音量取得
-//         var levelMeter = AudioQueueLevelMeterState()
-//         var propertySize = UInt32(MemoryLayout<AudioQueueLevelMeterState>.size)
-
-//         AudioQueueGetProperty(
-//             self.queue,
-//             kAudioQueueProperty_CurrentLevelMeterDB,
-//             &levelMeter,
-//             &propertySize)
-
-//         self.volume = (Int)((levelMeter.mPeakPower + 144.0) * (100.0/144.0))
-
-//         print("volume: " + String(self.volume))
-//         self.updateVolume(String(self.volume))
-
-// //        let mPeakPower = levelMeter.mPeakPower
-// //        let mAveragePower = levelMeter.mAveragePower
-// //        print("mPeakPower: " + String(mPeakPower))
-// //        print("mAveragePower: " + String(mAveragePower))
-
-//     }
-
-    // 測定停止
-    // private func StopUpdatingVolume()
-    // {
-    //     self.timer.invalidate()
-    //     self.timer = nil
-    //     AudioQueueFlush(self.queue)
-    //     AudioQueueStop(self.queue, false)
-    //     AudioQueueDispose(self.queue, true)
-    // }
 }
-
-// private func AudioQueueInputCallback(
-//     _ inUserData: UnsafeMutableRawPointer?,
-//     inAQ: AudioQueueRef,
-//     inBuffer: AudioQueueBufferRef,
-//     inStartTime: UnsafePointer<AudioTimeStamp>,
-//     inNumberPacketDescriptions: UInt32,
-//     inPacketDescs: UnsafePointer<AudioStreamPacketDescription>?)
-// {
-//     // Do nothing, because not recoding.
-// }

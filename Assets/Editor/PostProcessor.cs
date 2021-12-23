@@ -18,17 +18,13 @@ namespace UnitySwift {
 
                 plist.WriteToFile(plistPath);
 
-                var projPath = buildPath + "/Unity-iPhone.xcodeproj/project.pbxproj";
+                var projPath = PBXProject.GetPBXProjectPath(buildPath);
                 var proj = new PBXProject();
-                proj.ReadFromFile(projPath);
+                proj.ReadFromString(File.ReadAllText(projPath));
 
-                string xcodeTarget = proj.TargetGuidByName("Unity-iPhone");
-
-                proj.AddBuildProperty(xcodeTarget, "SWIFT_VERSION", "4.0");
-                proj.SetBuildProperty(xcodeTarget, "ENABLE_BITCODE", "NO");
-                proj.SetBuildProperty(xcodeTarget, "SWIFT_OBJC_BRIDGING_HEADER", "Libraries/Plugins/iOS/UnitySwift-Bridging-Header.h");
-                proj.SetBuildProperty(xcodeTarget, "SWIFT_OBJC_INTERFACE_HEADER_NAME", "Unity-iPhone-Swift.h");
-                proj.AddBuildProperty(xcodeTarget, "LD_RUNPATH_SEARCH_PATHS", "@executable_path/Frameworks");
+                var targetGUID = proj.GetUnityFrameworkTargetGuid();
+                proj.SetBuildProperty(targetGUID, "SWIFT_VERSION", "5.0");
+                File.WriteAllText(projPath, proj.WriteToString());
 
                 proj.WriteToFile(projPath);
             }
