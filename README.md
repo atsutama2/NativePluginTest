@@ -6,10 +6,10 @@ Native Plugin test for Unity
 - Test SpeechRecognizer of native features
 
 ## Requirements
-- macOS Catalina: 10.15.7
-- Unity 2018.4.19f
+- macOS Monterey: 12.0.1
+- Unity 2021.1.26f1
 - Android Studio 4.0.1
-- Swift4.0
+- Swift5.0
 
 ## Qiita
 - [[Unity] Android・iOSでネイティブの音声テキスト認識を実装する](https://qiita.com/atsutama/items/fd8dca4a1e621f4c855b)
