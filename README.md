@@ -6,7 +6,7 @@ Native Plugin test for Unity
 - Test SpeechRecognizer of native features
 
 ## Requirements
-- macOS Monterey: 12.0.1
+- macOS Big Sur 11.6.1
 - Unity 2021.1.26f1
 - Android Studio 4.0.1
 - Swift5.0
