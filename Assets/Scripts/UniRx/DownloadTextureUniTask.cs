@@ -1,6 +1,5 @@
 using System;
 using System.Threading;
-using UniRx;
 using Cysharp.Threading.Tasks;
 
 using UnityEngine;
