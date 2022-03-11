@@ -12,7 +12,7 @@ namespace UniRx
         [SerializeField] private int _countSeconds = 10;
 
         // Subjectのインスタンス
-        private Subject<int> _subject;
+        private OriginalSubject<int> _subject;
         
         // SubjectのIObservableインターフェイス部分のみ公開する
         public IObservable<int> CountDownObservable => _subject;
@@ -20,7 +20,7 @@ namespace UniRx
         private void Awake()
         {
             // Subject生成
-            _subject = new Subject<int>();
+            _subject = new OriginalSubject<int>();
             
             // カウントダウンするコルーチン起動
             StartCoroutine(CountCoroutine());
