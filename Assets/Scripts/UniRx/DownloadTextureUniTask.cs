@@ -42,7 +42,7 @@ namespace UniRx
         }
 
         // コルーチンの代わりにasync/awaitを利用する
-        private async UniTask<Texture> GetTextureAsync(string uri, CancellationToken token)
+        private static async UniTask<Texture> GetTextureAsync(string uri, CancellationToken token)
         {
             using var uwr = UnityWebRequestTexture.GetTexture(uri);
             await uwr.SendWebRequest().WithCancellation(token);
