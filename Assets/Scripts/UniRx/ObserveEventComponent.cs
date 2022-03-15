@@ -18,7 +18,13 @@ namespace UniRx
             _printLogObserver = new PrintLogObserver<int>();
             
             // SubjectのSubscribeを呼び出して、observerを登録する
-            _disposable = _countDownEventProvider.CountDownObservable.Subscribe(_printLogObserver);
+            // _disposable = _countDownEventProvider.CountDownObservable.Subscribe(_printLogObserver);
+            
+            // 簡易版Subscribe()
+            _disposable = _countDownEventProvider.CountDownObservable.Subscribe(
+                x => Debug.Log(x), //OnNext
+                Debug.LogError, //OnError
+                () => Debug.Log("OnCompleted!"));
         }
 
         private void OnDestroy()

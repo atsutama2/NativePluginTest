@@ -9,7 +9,7 @@ namespace UniRx
     {
         public void OnCompleted()
         {
-            Debug.Log("OnComplted!");
+            Debug.Log("OnCompleted!");
         }
 
         public void OnError(Exception error)
