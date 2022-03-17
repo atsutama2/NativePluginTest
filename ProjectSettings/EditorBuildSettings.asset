@@ -17,4 +17,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/UniTaskScene.unity
     guid: 010913ea151f24c9e8e121d2bff0e9ec
+  - enabled: 1
+    path: Assets/Scenes/UniRxScene1.unity
+    guid: 1940b34f8e75e439a89329770ea6be91
+  - enabled: 1
+    path: Assets/Scenes/UniRxScene2.unity
+    guid: 9f61627846afe4661a91031227f1ecbd
   m_configObjects: {}
