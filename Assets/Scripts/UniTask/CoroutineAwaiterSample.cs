@@ -9,6 +9,7 @@ namespace UniTask
         [SerializeField] private GameObject cube;
         
         private async UniTaskVoid Start()
+        // private async void Start()
         {
             // コルーチンにawaitを付けるだけで自動的にコルーチンが起動して待ち受けができる
             // 前→右→後と順番に移動する
