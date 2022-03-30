@@ -2,7 +2,7 @@ using System.Collections;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace UniTask
+namespace UniTaskDer
 {
     public class CoroutineAwaiterSample : MonoBehaviour
     {
